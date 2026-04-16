@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="断酒なう">
+  <title>断酒なう</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #48c774;
+      --green-light: #7ee8a2;
+      --green-dark: #2ecc71;
+      --bg: #0d1f0d;
+      --text: #e8f4e8;
+      --muted: rgba(255,255,255,0.4);
+      --card: rgba(255,255,255,0.06);
+      --card-border: rgba(255,255,255,0.12);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: linear-gradient(135deg, #0d1f0d 0%, #1a3a1a 40%, #0f2a1f 100%);
+      color: var(--text);
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 60px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Background orbs */
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::before {
+      top: -80px; right: -80px;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(72,199,116,0.13) 0%, transparent 70%);
+    }
+    body::after {
+      bottom: -60px; left: -60px;
+      width: 250px; height: 250px;
+      background: radial-gradient(circle, rgba(52,152,88,0.1) 0%, transparent 70%);
+    }
+
+    .container { width: 100%; max-width: 420px; position: relative; z-index: 1; }
+
+    /* Header */
+    .header { text-align: center; margin-bottom: 28px; }
+    .header-icon { font-size: 2rem; margin-bottom: 6px; }
+    .header h1 {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 1.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      background: linear-gradient(135deg, var(--green-light), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header p { font-size: 0.75rem; color: var(--muted); margin-top: 4px; letter-spacing: 0.1em; }
+    .save-badge {
+      display: inline-block;
+      margin-top: 8px;
+      background: rgba(72,199,116,0.15);
+      border: 1px solid rgba(72,199,116,0.3);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 0.7rem;
+      color: var(--green-light);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 9px 4px;
+      border: none;
+      border-radius: 9px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--muted);
+    }
+    .tab-btn.active {
+      background: rgba(72,199,116,0.2);
+      color: var(--green-light);
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(72,199,116,0.15);
+    }
+
+    /* Tab panels */
+    .panel { display: none; flex-direction: column; align-items: center; gap: 20px; }
+    .panel.active { display: flex; width: 100%; }
+
+    /* Timer */
+    .days-display {
+      text-align: center;
+    }
+    .days-number {
+      font-family: 'DM Mono', monospace;
+      font-size: 5.5rem;
+      font-weight: 700;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--green-light), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 14px rgba(72,199,116,0.5));
+      transition: filter 1s;
+    }
+    .days-label {
+      font-size: 1rem;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.2em;
+      margin-top: 4px;
+    }
+
+    .hms {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .digit-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .digit-value {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 10px 16px;
+      min-width: 62px;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 2.2rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 2px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    .digit-label {
+      font-size: 0.62rem;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.15em;
+    }
+    .separator {
+      font-family: 'DM Mono', monospace;
+      font-size: 2rem;
+      color: rgba(255,255,255,0.2);
+      margin-bottom: 20px;
+      user-select: none;
+    }
+
+    .start-date {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.35);
+      text-align: center;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 14px 18px;
+      width: 100%;
+    }
+    .card-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .milestone-next {
+      font-size: 1.05rem;
+    }
+    .milestone-next strong { color: var(--green-light); }
+
+    /* Buttons */
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 28px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.1rem;
+      padding: 16px 48px;
+      border-radius: 50px;
+      box-shadow: 0 4px 24px rgba(72,199,116,0.4);
+      letter-spacing: 0.05em;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(72,199,116,0.5); }
+    .btn-green {
+      background: rgba(72,199,116,0.2);
+      border: 1px solid rgba(72,199,116,0.4);
+      color: var(--green-light);
+      font-weight: 700;
+    }
+    .btn-danger {
+      background: rgba(255,80,80,0.1);
+      border: 1px solid rgba(255,80,80,0.25);
+      color: rgba(255,140,140,0.8);
+    }
+    .btn-ghost {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7);
+    }
+    .btn-sm { padding: 8px 20px; font-size: 0.82rem; }
+
+    /* Reset confirm */
+    .confirm-box {
+      background: rgba(255,80,80,0.08);
+      border: 1px solid rgba(255,80,80,0.25);
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+      width: 100%;
+    }
+    .confirm-box p { font-size: 0.85rem; color: rgba(255,200,200,0.9); margin-bottom: 12px; line-height: 1.7; }
+    .confirm-row { display: flex; gap: 10px; justify-content: center; }
+
+    /* Start screen */
+    .start-screen {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+    }
+    .start-icon { font-size: 3.5rem; }
+    .start-screen p { color: rgba(255,255,255,0.6); font-size: 0.95rem; line-height: 1.8; }
+
+    .confirm-start {
+      background: rgba(72,199,116,0.1);
+      border: 1px solid rgba(72,199,116,0.3);
+      border-radius: 12px;
+      padding: 16px;
+      width: 100%;
+      text-align: center;
+    }
+    .confirm-start p { color: rgba(255,255,255,0.85); font-size: 0.88rem; margin-bottom: 14px; }
+    .confirm-start .btn-row { display: flex; gap: 10px; justify-content: center; }
+
+    /* Log tab */
+    .log-panel { width: 100%; display: flex; flex-direction: column; gap: 14px; }
+    .memo-box { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 16px; }
+    .memo-box label { font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 8px; }
+    textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.85rem;
+      padding: 10px;
+      resize: none;
+      outline: none;
+      line-height: 1.6;
+    }
+    textarea::placeholder { color: rgba(255,255,255,0.25); }
+    .log-entry {
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .log-entry.start { background: rgba(72,199,116,0.1); border: 1px solid rgba(72,199,116,0.25); }
+    .log-entry.reset { background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.2); }
+    .log-entry.note { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); }
+    .log-date { font-size: 0.7rem; color: rgba(255,255,255,0.35); margin-bottom: 4px; }
+    .log-text { font-size: 0.88rem; }
+    .log-entry.start .log-text { color: var(--green-light); }
+    .log-entry.reset .log-text { color: #ffaaaa; }
+    .log-entry.note .log-text { color: rgba(255,255,255,0.8); }
+    .log-empty { text-align: center; color: rgba(255,255,255,0.3); font-size: 0.85rem; }
+
+    /* Badge tab */
+    .badge-panel { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+    .badge-intro { font-size: 0.78rem; color: var(--muted); text-align: center; margin-bottom: 4px; }
+    .badge-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-radius: 12px;
+      padding: 14px 16px;
+      transition: all 0.3s;
+    }
+    .badge-item.done { background: rgba(72,199,116,0.1); border: 1px solid rgba(72,199,116,0.3); }
+    .badge-item.todo { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); opacity: 0.5; }
+    .badge-emoji { font-size: 2rem; }
+    .badge-item.todo .badge-emoji { filter: grayscale(1); }
+    .badge-name { font-weight: 700; font-size: 0.95rem; }
+    .badge-item.done .badge-name { color: var(--green-light); }
+    .badge-item.todo .badge-name { color: rgba(255,255,255,0.5); }
+    .badge-status { font-size: 0.72rem; color: rgba(255,255,255,0.35); margin-top: 2px; }
+
+    /* Footer */
+    .footer { margin-top: 44px; font-size: 0.7rem; color: rgba(255,255,255,0.18); text-align: center; letter-spacing: 0.05em; }
+
+    /* Animations */
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation: fadeIn 0.4s ease; }
+
+    /* Hidden */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">🍃</div>
+    <h1>断酒なう</h1>
+    <p>今日も、一日一日を大切に。</p>
+    <div class="save-badge">💾 自動保存</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" style="width:100%">
+    <button class="tab-btn active" onclick="switchTab('timer')">⏱ タイマー</button>
+    <button class="tab-btn" onclick="switchTab('log')">📓 記録</button>
+    <button class="tab-btn" onclick="switchTab('badge')">🏅 実績</button>
+  </div>
+
+  <!-- TIMER PANEL -->
+  <div class="panel active" id="panel-timer">
+
+    <!-- Not started -->
+    <div class="start-screen" id="start-screen">
+      <div class="start-icon">🌱</div>
+      <p>今日から断酒を始めましょう。<br>タイマーをスタートしてください。</p>
+      <button class="btn btn-primary" onclick="showConfirmStart()">断酒スタート！</button>
+      <div class="confirm-start hidden" id="confirm-start">
+        <p>今日から断酒します。<br>覚悟はいいですか？💪</p>
+        <div class="btn-row">
+          <button class="btn btn-green" onclick="doStart()">はい、始めます！</button>
+          <button class="btn btn-ghost btn-sm" onclick="hideConfirmStart()">もどる</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Running -->
+    <div class="hidden" id="running-screen" style="display:flex;flex-direction:column;align-items:center;gap:20px;width:100%">
+      <div class="days-display">
+        <div class="days-number" id="days-num">0</div>
+        <div class="days-label">日目</div>
+      </div>
+
+      <div class="hms">
+        <div class="digit-box">
+          <div class="digit-value" id="hours-num">00</div>
+          <div class="digit-label">時間</div>
+        </div>
+        <div class="separator">:</div>
+        <div class="digit-box">
+          <div class="digit-value" id="minutes-num">00</div>
+          <div class="digit-label">分</div>
+        </div>
+        <div class="separator">:</div>
+        <div class="digit-box">
+          <div class="digit-value" id="seconds-num">00</div>
+          <div class="digit-label">秒</div>
+        </div>
+      </div>
+
+      <div class="start-date" id="start-date-label"></div>
+
+      <div class="card" id="milestone-card">
+        <div class="card-label">次のマイルストーン</div>
+        <div class="milestone-next" id="milestone-text"></div>
+      </div>
+
+      <div id="reset-area" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:12px">
+        <button class="btn btn-danger" onclick="showResetConfirm()">飲んでしまった…（リセット）</button>
+        <div class="confirm-box hidden" id="reset-confirm">
+          <p>大丈夫。また今日から始めよう。<br>リセットしますか？</p>
+          <div class="confirm-row">
+            <button class="btn btn-sm" style="background:rgba(255,80,80,0.25);border:1px solid rgba(255,80,80,0.5);color:#ffaaaa;" onclick="doReset()">リセットする</button>
+            <button class="btn btn-ghost btn-sm" onclick="hideResetConfirm()">もどる</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LOG PANEL -->
+  <div class="panel" id="panel-log">
+    <div class="log-panel">
+      <div class="memo-box">
+        <label>今の気持ちをメモ</label>
+        <textarea id="memo-input" rows="3" placeholder="例：飲みたい気持ちが来たけど乗り越えた！"></textarea>
+        <button class="btn btn-green" style="margin-top:10px;width:100%;" onclick="addNote()">記録する</button>
+      </div>
+      <div id="log-list"></div>
+    </div>
+  </div>
+
+  <!-- BADGE PANEL -->
+  <div class="panel" id="panel-badge">
+    <div class="badge-panel">
+      <div class="badge-intro">マイルストーン達成バッジ</div>
+      <div id="badge-list"></div>
+    </div>
+  </div>
+
+  <div class="footer">一日一日が積み重なって、あなたを変えていく。</div>
+
+</div>
+
+<script>
+  const LS_START = 'danshu_start_v2';
+  const LS_LOG   = 'danshu_log_v2';
+
+  const MILESTONES = [
+    { days:1,   label:'1日',   emoji:'🌱' },
+    { days:3,   label:'3日',   emoji:'🌿' },
+    { days:7,   label:'1週間', emoji:'🌳' },
+    { days:30,  label:'1ヶ月', emoji:'🏆' },
+    { days:100, label:'100日', emoji:'💎' },
+    { days:365, label:'1年',   emoji:'👑' },
+  ];
+
+  let startDate = null;
+  let logData = [];
+  let timerInterval = null;
+
+  // --- Init ---
+  function init() {
+    const saved = localStorage.getItem(LS_START);
+    if (saved) {
+      startDate = Number(saved);
+      showRunning();
+    }
+    const savedLog = localStorage.getItem(LS_LOG);
+    if (savedLog) {
+      try { logData = JSON.parse(savedLog); } catch {}
+    }
+    renderLog();
+    renderBadges();
+    if (startDate) startTick();
+  }
+
+  // --- Tabs ---
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach((b,i) => {
+      b.classList.toggle('active', ['timer','log','badge'][i] === name);
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    if (name === 'badge') renderBadges();
+    if (name === 'log') renderLog();
+  }
+
+  // --- Start ---
+  function showConfirmStart() {
+    document.querySelector('.btn-primary').classList.add('hidden');
+    document.getElementById('confirm-start').classList.remove('hidden');
+  }
+  function hideConfirmStart() {
+    document.querySelector('.btn-primary').classList.remove('hidden');
+    document.getElementById('confirm-start').classList.add('hidden');
+  }
+  function doStart() {
+    const t = Date.now();
+    startDate = t;
+    localStorage.setItem(LS_START, String(t));
+    addLogEntry('start', '断酒スタート！🌱');
+    showRunning();
+    startTick();
+  }
+
+  // --- Reset ---
+  function showResetConfirm() {
+    document.querySelector('.btn-danger').classList.add('hidden');
+    document.getElementById('reset-confirm').classList.remove('hidden');
+  }
+  function hideResetConfirm() {
+    document.querySelector('.btn-danger').classList.remove('hidden');
+    document.getElementById('reset-confirm').classList.add('hidden');
+  }
+  function doReset() {
+    const t = Date.now();
+    startDate = t;
+    localStorage.setItem(LS_START, String(t));
+    addLogEntry('reset', 'リセット（再スタート）🔄');
+    hideResetConfirm();
+    tick();
+  }
+
+  // --- Show/hide screens ---
+  function showRunning() {
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('running-screen').classList.remove('hidden');
+    document.getElementById('start-date-label').textContent =
+      '断酒開始：' + new Date(startDate).toLocaleString('ja-JP');
+  }
+
+  // --- Tick ---
+  function startTick() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(tick, 1000);
+    tick();
+  }
+
+  function pad(n) { return String(n).padStart(2,'0'); }
+
+  function tick() {
+    if (!startDate) return;
+    const elapsed = Date.now() - startDate;
+    const totalSec = Math.floor(elapsed / 1000);
+    const days    = Math.floor(totalSec / 86400);
+    const hours   = Math.floor((totalSec % 86400) / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+
+    document.getElementById('days-num').textContent = days;
+    document.getElementById('hours-num').textContent = pad(hours);
+    document.getElementById('minutes-num').textContent = pad(minutes);
+    document.getElementById('seconds-num').textContent = pad(seconds);
+
+    // Milestone
+    const next = MILESTONES.find(m => days < m.days);
+    const mc = document.getElementById('milestone-card');
+    const mt = document.getElementById('milestone-text');
+    if (next) {
+      mc.style.display = '';
+      mt.innerHTML = next.emoji + ' ' + next.label + 'まであと <strong>' + (next.days - days) + '日</strong>';
+    } else {
+      mc.style.display = 'none';
+    }
+
+    // Pulse glow
+    const glow = (seconds % 2 === 0) ? '18px' : '10px';
+    document.getElementById('days-num').style.filter = `drop-shadow(0 0 ${glow} rgba(72,199,116,0.5))`;
+
+    renderBadgesIfActive(days);
+  }
+
+  // --- Log ---
+  function addLogEntry(type, text) {
+    const entry = { type, date: new Date().toLocaleString('ja-JP'), note: text };
+    logData.unshift(entry);
+    localStorage.setItem(LS_LOG, JSON.stringify(logData));
+    renderLog();
+  }
+
+  function addNote() {
+    const input = document.getElementById('memo-input');
+    const val = input.value.trim();
+    if (!val) return;
+    addLogEntry('note', val);
+    input.value = '';
+  }
+
+  function renderLog() {
+    const el = document.getElementById('log-list');
+    if (logData.length === 0) {
+      el.innerHTML = '<div class="log-empty">記録はまだありません</div>';
+      return;
+    }
+    el.innerHTML = logData.map(e => `
+      <div class="log-entry ${e.type} fade-in" style="margin-bottom:10px">
+        <div class="log-date">${e.date}</div>
+        <div class="log-text">${e.note}</div>
+      </div>
+    `).join('');
+  }
+
+  // --- Badges ---
+  let lastBadgeDays = -1;
+  function renderBadgesIfActive(days) {
+    if (days === lastBadgeDays) return;
+    lastBadgeDays = days;
+    if (document.getElementById('panel-badge').classList.contains('active')) renderBadges();
+  }
+
+  function renderBadges() {
+    const elapsed = startDate ? Date.now() - startDate : 0;
+    const days = Math.floor(elapsed / 86400000);
+    const el = document.getElementById('badge-list');
+    el.innerHTML = MILESTONES.map(m => {
+      const done = days >= m.days;
+      return `
+        <div class="badge-item ${done ? 'done' : 'todo'}" style="margin-bottom:10px">
+          <div class="badge-emoji">${m.emoji}</div>
+          <div>
+            <div class="badge-name">${m.label}達成</div>
+            <div class="badge-status">${done ? '✅ 達成済み！おめでとう！' : 'あと' + (m.days - days) + '日'}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  init();
+</script>
+</body>
+</html>
