@@ -335,6 +335,38 @@
 
     /* Hidden */
     .hidden { display: none !important; }
+    /* --- Trigger --- */
+    .trigger-panel { width: 100%; display: flex; flex-direction: column; gap: 14px; }
+    .trig-label { font-size: 0.72rem; color: var(--muted); margin: 14px 0 6px; letter-spacing: 0.05em; }
+    .sit-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .sit-btn, .str-btn {
+      border: 1px solid var(--card-border);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 2px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .sit-btn.sel, .str-btn.sel {
+      background: rgba(72,199,116,0.25);
+      border-color: var(--green);
+      color: var(--green-light);
+      font-weight: 700;
+    }
+    .str-row { display: flex; gap: 8px; }
+    .str-btn { flex: 1; font-size: 1rem; }
+    .trig-msg { margin-top: 12px; text-align: center; font-size: 0.85rem; color: var(--green-light); }
+    .trig-stats { font-size: 0.85rem; line-height: 1.9; }
+    .trig-stats .bar {
+      display: inline-block; height: 8px;
+      background: linear-gradient(90deg, var(--green), var(--green-light));
+      border-radius: 4px; vertical-align: middle; margin-left: 6px;
+    }
+    .log-entry.trig-win  { background: rgba(72,199,116,0.1);  border: 1px solid rgba(72,199,116,0.25); }
+    .log-entry.trig-lose { background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.2); }
+    .backup-row { display: flex; gap: 10px; justify-content: center; }
   </style>
 </head>
 <body>
@@ -351,6 +383,7 @@
   <!-- Tabs -->
   <div class="tabs" style="width:100%">
     <button class="tab-btn active" onclick="switchTab('timer')">⏱ タイマー</button>
+    <button class="tab-btn" onclick="switchTab('trigger')">⚡ 飲みたい</button>
     <button class="tab-btn" onclick="switchTab('log')">📓 記録</button>
     <button class="tab-btn" onclick="switchTab('badge')">🏅 実績</button>
   </div>
@@ -417,6 +450,54 @@
 
   </div>
 
+  <!-- TRIGGER PANEL -->
+  <div class="panel" id="panel-trigger">
+    <div class="trigger-panel">
+      <div class="memo-box">
+        <label>⚡ 飲みたくなった瞬間を10秒で記録</label>
+
+        <div class="trig-label">状況（何の後？）</div>
+        <div class="sit-grid">
+          <button class="sit-btn" onclick="selectSit(this,'仕事帰り')">🚃 仕事帰り</button>
+          <button class="sit-btn" onclick="selectSit(this,'ストレス')">💢 ストレス</button>
+          <button class="sit-btn" onclick="selectSit(this,'競馬の後')">🐴 競馬の後</button>
+          <button class="sit-btn" onclick="selectSit(this,'暇・退屈')">🛋 暇・退屈</button>
+          <button class="sit-btn" onclick="selectSit(this,'付き合い')">🍻 付き合い</button>
+          <button class="sit-btn" onclick="selectSit(this,'その他')">❓ その他</button>
+        </div>
+
+        <div class="trig-label">飲みたさの強さ</div>
+        <div class="str-row">
+          <button class="str-btn" onclick="selectStr(this,1)">1</button>
+          <button class="str-btn" onclick="selectStr(this,2)">2</button>
+          <button class="str-btn" onclick="selectStr(this,3)">3</button>
+          <button class="str-btn" onclick="selectStr(this,4)">4</button>
+          <button class="str-btn" onclick="selectStr(this,5)">5</button>
+        </div>
+
+        <div class="trig-label">どうした？</div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-green" style="flex:1" onclick="saveTrigger('耐えた')">💪 耐えた</button>
+          <button class="btn btn-danger" style="flex:1" onclick="saveTrigger('飲んだ')">🍺 飲んだ</button>
+        </div>
+        <div class="trig-msg hidden" id="trig-msg"></div>
+      </div>
+
+      <div class="card" style="width:100%">
+        <div class="card-label">📊 傾向</div>
+        <div id="trig-stats" class="trig-stats"></div>
+      </div>
+
+      <div id="trig-list" style="width:100%"></div>
+
+      <div class="backup-row">
+        <button class="btn btn-ghost btn-sm" onclick="exportData()">📤 バックアップ</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-file').click()">📥 復元</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
+    </div>
+  </div>
+
   <!-- LOG PANEL -->
   <div class="panel" id="panel-log">
     <div class="log-panel">
@@ -477,12 +558,13 @@
   // --- Tabs ---
   function switchTab(name) {
     document.querySelectorAll('.tab-btn').forEach((b,i) => {
-      b.classList.toggle('active', ['timer','log','badge'][i] === name);
+      b.classList.toggle('active', ['timer','trigger','log','badge'][i] === name);
     });
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + name).classList.add('active');
     if (name === 'badge') renderBadges();
     if (name === 'log') renderLog();
+    if (name === 'trigger') renderTrigger();
   }
 
   // --- Start ---
@@ -626,6 +708,105 @@
     }).join('');
   }
 
+  // --- Trigger（飲みたい記録）---
+  const LS_TRIG = 'danshu_trigger_v1';
+  let trigData = [];
+  try { trigData = JSON.parse(localStorage.getItem(LS_TRIG)) || []; } catch {}
+  let selSit = null, selStrength = null;
+
+  function selectSit(btn, v) {
+    selSit = v;
+    document.querySelectorAll('.sit-btn').forEach(b => b.classList.toggle('sel', b === btn));
+  }
+  function selectStr(btn, v) {
+    selStrength = v;
+    document.querySelectorAll('.str-btn').forEach(b => b.classList.toggle('sel', b === btn));
+  }
+
+  function saveTrigger(result) {
+    if (!selSit) { showTrigMsg('👆 まず「状況」を選んでください'); return; }
+    const d = new Date();
+    const entry = { ts: d.getTime(), date: d.toLocaleString('ja-JP'), sit: selSit, str: selStrength || 3, result };
+    trigData.unshift(entry);
+    localStorage.setItem(LS_TRIG, JSON.stringify(trigData));
+    selSit = null; selStrength = null;
+    document.querySelectorAll('.sit-btn, .str-btn').forEach(b => b.classList.remove('sel'));
+    showTrigMsg(result === '耐えた'
+      ? '💪 ナイス！記録しました。銭湯・ストレッチも効きますよ'
+      : '記録しました。正直に書けたのが偉い。また積み上げよう🌱');
+    renderTrigger();
+  }
+
+  function showTrigMsg(t) {
+    const el = document.getElementById('trig-msg');
+    el.textContent = t;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 4000);
+  }
+
+  function renderTrigger() {
+    const st = document.getElementById('trig-stats');
+    if (trigData.length === 0) {
+      st.innerHTML = 'まだ記録がありません。飲みたくなったらタップ！';
+    } else {
+      const total = trigData.length;
+      const win = trigData.filter(e => e.result === '耐えた').length;
+      const rate = Math.round(win / total * 100);
+      const bySit = {};
+      trigData.forEach(e => { bySit[e.sit] = (bySit[e.sit] || 0) + 1; });
+      const max = Math.max(...Object.values(bySit));
+      const rows = Object.entries(bySit).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
+        `${k}：${v}回<span class="bar" style="width:${Math.round(v / max * 80)}px"></span>`
+      ).join('<br>');
+      st.innerHTML = `記録 ${total}回 ／ 耐えた ${win}回（<b>耐え率 ${rate}%</b>）<br>${rows}`;
+    }
+    const el = document.getElementById('trig-list');
+    el.innerHTML = trigData.slice(0, 30).map(e => `
+      <div class="log-entry ${e.result === '耐えた' ? 'trig-win' : 'trig-lose'}" style="margin-bottom:10px">
+        <div class="log-date">${e.date}</div>
+        <div class="log-text">${e.result === '耐えた' ? '💪' : '🍺'} ${e.sit} ／ 強さ${e.str} ／ ${e.result}</div>
+      </div>
+    `).join('');
+  }
+
+  // --- Backup（機種変更対策）---
+  function exportData() {
+    const data = {
+      start: localStorage.getItem(LS_START),
+      log: logData,
+      trigger: trigData,
+      exported: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'danshu-backup.json';
+    a.click();
+  }
+
+  function importData(ev) {
+    const f = ev.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const d = JSON.parse(r.result);
+        if (d.start) {
+          localStorage.setItem(LS_START, d.start);
+          startDate = Number(d.start);
+          showRunning(); startTick();
+        }
+        if (Array.isArray(d.log)) { logData = d.log; localStorage.setItem(LS_LOG, JSON.stringify(logData)); renderLog(); }
+        if (Array.isArray(d.trigger)) { trigData = d.trigger; localStorage.setItem(LS_TRIG, JSON.stringify(trigData)); }
+        renderTrigger();
+        showTrigMsg('📥 復元しました！');
+      } catch { showTrigMsg('⚠ 読み込みに失敗しました'); }
+    };
+    r.readAsText(f);
+    ev.target.value = '';
+  }
+
+  renderTrigger();
   init();
 </script>
 </body>
